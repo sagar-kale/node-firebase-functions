@@ -16,10 +16,10 @@ const db = admin.firestore();
 
 exports.onUserImageChange = functions
     .region('asia-east2')
-    .firestore.document('/users/{userId}')
+    .firestore.document('users/{userId}')
     .onUpdate((change) => {
-        console.log(change.before.data());
-        console.log(change.after.data());
+        //console.log(change.before.data());
+        //console.log(change.after.data());
         if (change.before.data().photoURL !== change.after.data().photoURL) {
             console.log('image has changed');
             const batch = db.batch();
@@ -29,7 +29,7 @@ exports.onUserImageChange = functions
                 .get()
                 .then((data) => {
                     data.forEach((doc) => {
-                        const post = db.doc(`/projects/${doc.id}`);
+                        const post = db.doc(`projects/${doc.id}`);
                         batch.update(post, { userImage: change.after.data().photoURL });
                     });
                     return batch.commit();
@@ -45,14 +45,14 @@ exports.createNotificationOnComment = functions
     .firestore.document('comments/{id}')
     .onCreate((snapshot) => {
         return db
-            .doc(`/projects/${snapshot.data().postId}`)
+            .doc(`projects/${snapshot.data().postId}`)
             .get()
             .then((doc) => {
                 if (
                     doc.exists &&
                     doc.data().userHandle !== snapshot.data().userHandle
                 ) {
-                    return db.doc(`/user_notifications/${snapshot.id}`).set({
+                    return db.doc(`user_notifications/${snapshot.id}`).set({
                         createdAt: new Date(),
                         recipient: doc.data().userHandle,
                         sender: snapshot.data().userHandle,
@@ -72,7 +72,7 @@ exports.createNotificationOnComment = functions
 
 exports.onPostDelete = functions
     .region('asia-east2')
-    .firestore.document('/projects/{postId}')
+    .firestore.document('projects/{postId}')
     .onDelete((snapshot, context) => {
         const postId = context.params.postId;
         const batch = db.batch();
@@ -82,7 +82,7 @@ exports.onPostDelete = functions
             .get()
             .then((data) => {
                 data.forEach((doc) => {
-                    batch.delete(db.doc(`/comments/${doc.id}`));
+                    batch.delete(db.doc(`comments/${doc.id}`));
                 });
                 return db
                     .collection('likes')
@@ -100,7 +100,7 @@ exports.onPostDelete = functions
             })
             .then((data) => {
                 data.forEach((doc) => {
-                    batch.delete(db.doc(`/user_notifications/${doc.id}`));
+                    batch.delete(db.doc(`user_notifications/${doc.id}`));
                 });
                 return batch.commit();
             })
@@ -114,14 +114,14 @@ exports.createNotificationOnLike = functions
     .firestore.document('likes/{id}')
     .onCreate((snapshot) => {
         return db
-            .doc(`/projects/${snapshot.data().postId}`)
+            .doc(`projects/${snapshot.data().postId}`)
             .get()
             .then((doc) => {
                 if (
                     doc.exists &&
                     doc.data().userHandle !== snapshot.data().userHandle
                 ) {
-                    return db.doc(`/user_notifications/${snapshot.id}`).set({
+                    return db.doc(`user_notifications/${snapshot.id}`).set({
                         createdAt: new Date(),
                         recipient: doc.data().userHandle,
                         sender: snapshot.data().userHandle,
@@ -141,22 +141,18 @@ exports.deleteNotificationOnUnLike = functions
     .firestore.document('likes/{id}')
     .onDelete((snapshot) => {
         return db
-            .doc(`/user_notifications/${snapshot.id}`)
-            .delete()
-            .catch((err) => {
-                console.error(err);
-                return;
-            });
+            .doc(`user_notifications/${snapshot.id}`)
+            .delete();
     });
 
 // delete user notification on delete comment
 
-exports.deleteNotificationOnUnLike = functions
+exports.deleteCommentNotification = functions
     .region('asia-east2')
     .firestore.document('comments/{id}')
     .onDelete((snapshot) => {
         return db
-            .doc(`/user_notifications/${snapshot.id}`)
+            .doc(`user_notifications/${snapshot.id}`)
             .delete()
             .catch((err) => {
                 console.error(err);
